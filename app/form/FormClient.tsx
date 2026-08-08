@@ -58,43 +58,22 @@ Ami:
 
   const handleSubmit = async () => {
     if (!friend || !user) return;
+    setMessage('Envoi du formulaire en cours...');
 
-    // Construction du message à pré-remplir
-    const description = `
-Utilisateur:
-- Email: ${user.email}
-- ID Snapchat: ${user.snapId}
-- Téléphone: ${user.phone}
-
-Ami:
-- Nom: ${friend.name}
-- ID Snapchat: ${friend.snapId}
-
-Demande de restauration de flammes avec cet ami.
-    `.trim();
-
-    // URL du formulaire Snapchat avec pré-remplissage Zendesk
-    const formUrl = new URL('https://help.snapchat.com/hc/en-gb/requests/new');
-    formUrl.searchParams.set('co', 'true');
-    formUrl.searchParams.set('ticket_form_id', '149423');
-    formUrl.searchParams.set('ticket[subject]', `Restauration flammes avec ${friend.name}`);
-    formUrl.searchParams.set('ticket[description]', description);
-    formUrl.searchParams.set('ticket[requester][email]', user.email);
-
-    // Copier aussi automatiquement dans le presse-papiers
     try {
-      await navigator.clipboard.writeText(description);
-    } catch (e) {
-      // Silencieusement ignoré si la copie échoue
-    }
-
-    // Ouvrir la fenêtre
-    const window_ref = window.open(formUrl.toString(), 'snapchat_form', 'width=800,height=600');
-
-    if (window_ref) {
-      setMessage('✓ Formulaire ouvert. Les données sont pré-remplies et copiées dans le presse-papiers. Complétez et envoyez.');
-    } else {
-      setMessage('Impossible d\'ouvrir le formulaire. Vérifiez les pop-ups.');
+      const res = await fetch('/api/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendId: friend.id }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setMessage(result.message);
+      } else {
+        setMessage(result.message || 'Erreur lors de l\'envoi');
+      }
+    } catch (error: any) {
+      setMessage(`Erreur: ${error.message}`);
     }
   };
 
@@ -118,7 +97,7 @@ Demande de restauration de flammes avec cet ami.
     <main>
       <div className="header">
         <h1>Restauration de flammes</h1>
-        <p className="subtitle">Un clic pour pré-remplir automatiquement le formulaire Snapchat.</p>
+        <p className="subtitle">Un clic pour envoyer automatiquement votre demande à Snapchat.</p>
       </div>
 
       <section className="card">
@@ -135,10 +114,9 @@ Demande de restauration de flammes avec cet ami.
       </section>
 
       <section className="card">
-        <p className="small-text">Votre formulaire s'ouvrira automatiquement avec vos données pré-remplies. Vous pouvez aussi copier manuellement les données de votre côté.</p>
+        <p className="small-text">Cliquez pour envoyer automatiquement votre demande de restauration de flammes à Snapchat.</p>
         <div className="button-row">
-          <button className="primary" onClick={handleSubmit}>Restaurer avec cet ami</button>
-          <button className="secondary" onClick={copyToClipboard}>Copier les données</button>
+          <button className="primary" onClick={handleSubmit}>Envoyer automatiquement</button>
         </div>
         <div className="button-row">
           <button className="secondary" onClick={() => router.push('/dashboard')}>Retour</button>

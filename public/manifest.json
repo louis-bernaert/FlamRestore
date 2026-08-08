@@ -1,0 +1,21 @@
+{
+  "name": "SnapFlam Restore",
+  "short_name": "SnapFlam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#111827",
+  "description": "Préparez facilement la restauration de flammes Snapchat.",
+  "icons": [
+    {
+      "src": "/icons/flame.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/flame.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

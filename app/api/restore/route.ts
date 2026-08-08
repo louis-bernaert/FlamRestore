@@ -20,8 +20,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Ami introuvable.' }, { status: 404 });
   }
 
+  // En production (Vercel), on retourne les données pré-remplies
+  // En local (développement), on essaie d'automatiser avec Puppeteer
+  const isProduction = process.env.VERCEL === '1';
+
+  if (isProduction) {
+    // Sur Vercel, on ne peut pas utiliser Puppeteer (limites serverless)
+    return NextResponse.json({
+      ok: true,
+      message: '✓ Prêt à envoyer ! Le formulaire s\'ouvrira bientôt avec vos données.',
+      data: {
+        email: user.email,
+        snapId: user.snapId,
+        phone: user.phone,
+        friendName: friend.name,
+        friendSnapId: friend.snapId,
+      }
+    });
+  }
+
+  // Mode local : utiliser Puppeteer
   try {
-    // Import dynamique de Puppeteer pour éviter les problèmes de build
     const puppeteer = await import('puppeteer');
 
     const browser = await puppeteer.default.launch({
@@ -32,10 +51,11 @@ export async function POST(request: Request) {
     const page = await browser.newPage();
     await page.goto('https://help.snapchat.com/hc/en-gb/requests/new?co=true&ticket_form_id=149423', {
       waitUntil: 'networkidle2',
+      timeout: 30000,
     });
 
     // Remplir le formulaire
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 }).catch(() => null);
+    await page.waitForSelector('input[type="email"]', { timeout: 5000 }).catch(() => null);
 
     // Email
     const emailFields = await page.$$('input[type="email"]');
@@ -44,17 +64,12 @@ export async function POST(request: Request) {
     }
 
     // Sujet
-    const subjectFields = await page.$$('input[name*="subject"], input[placeholder*="subject"]');
-    if (subjectFields.length === 0) {
-      const allInputs = await page.$$('input[type="text"]');
-      if (allInputs.length > 0) {
-        await allInputs[0].type(`Restauration flammes avec ${friend.name}`);
-      }
-    } else {
-      await subjectFields[0].type(`Restauration flammes avec ${friend.name}`);
+    const allInputs = await page.$$('input[type="text"]');
+    if (allInputs.length > 0) {
+      await allInputs[0].type(`Restauration flammes avec ${friend.name}`);
     }
 
-    // Description/Message
+    // Description
     const description = `
 Utilisateur:
 - Email: ${user.email}
@@ -73,14 +88,14 @@ Demande de restauration de flammes avec cet ami.
       await textareas[0].type(description);
     }
 
-    // Attendre un peu pour que les éléments se remplissent
+    // Attendre un peu
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Chercher et cliquer le bouton de soumission
     const submitButton = await page.$('button[type="submit"], button[value="Submit"], input[type="submit"]');
     if (submitButton) {
       await submitButton.click();
-      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }).catch(() => null);
+      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 5000 }).catch(() => null);
     }
 
     await browser.close();
@@ -90,9 +105,9 @@ Demande de restauration de flammes avec cet ami.
       message: '✓ Formulaire envoyé avec succès ! Snapchat traitera votre demande dans les heures qui suivent.',
     });
   } catch (error: any) {
-    console.error('Erreur lors de l\'envoi:', error);
+    console.error('Erreur local Puppeteer:', error);
     return NextResponse.json(
-      { message: `Erreur lors de l'envoi: ${error.message}` },
+      { message: 'Erreur: assurez-vous que Chrome/Chromium est installé en local.' },
       { status: 500 }
     );
   }
